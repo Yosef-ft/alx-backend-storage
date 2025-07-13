@@ -7,6 +7,22 @@ Redis config file
 import redis
 import uuid
 from typing import Union, Optional, Callable
+from functools import wraps
+
+
+def count_calls(method: Callable) -> Callable:
+    '''
+    Decorator that counts how many times a method is called
+    '''
+    @wraps(method)
+    def wrapper(self, *args, **kwargs):
+        '''Wrapper that increments the count and calls'''
+        key = method.__qualname__
+        self._redis.incr(key)
+
+        return method(self, *args, **kwargs)
+
+    return wrapper
 
 
 class Cache:
@@ -22,6 +38,7 @@ class Cache:
             host='localhost', port=6379, decode_responses=False)
         self._redis.flushdb()
 
+    @count_calls
     def store(self, data: Union[str | int | float | bytes]) -> str:
         """
         Stores the given data in Redis with a generated UUID key.
@@ -40,7 +57,7 @@ class Cache:
 
     def get(
             self, key: str, fn: Optional[Callable] = None
-            ) -> Optional[Union[str, int, bytes]]:
+    ) -> Optional[Union[str, int, bytes]]:
         """
         Retrieve data from redis
         """
